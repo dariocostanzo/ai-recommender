@@ -22,20 +22,6 @@ Throughout this bootcamp, we'll build a content recommendation system that can:
 3. Recommend related content based on user preferences
 4. Provide personalised suggestions through a user-friendly interface
 
-## Setting Up Your Environment
-
-We've already created the basic project structure:
-
-ai-recommender/
-├── data/ # For storing datasets
-├── models/ # For saving trained models
-├── notebooks/ # For exploratory data analysis
-├── src/ # Source code for our application
-└── docs/ # Documentation and lessons
-├── lessons/ # Step-by-step tutorials
-├── resources/ # Additional learning materials
-└── exercises/ # Practice problems
-
 ## Next Steps
 
 In the next lesson, we'll:
