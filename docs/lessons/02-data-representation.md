@@ -2,126 +2,111 @@
 
 ## Introduction
 
-In this lesson, we'll explore how to represent text data for machine learning models. Understanding data representation is crucial for building effective recommendation systems.
+In this lesson, we'll explore different ways to represent text data for our recommendation system. How we represent our data is crucial - it determines what patterns our system can learn and how effectively it can make recommendations.
 
 ## Text Representation Techniques
 
-### Bag of Words (BoW)
+### 1. Bag of Words (BoW)
 
-The simplest way to represent text is through the Bag of Words model:
+The simplest way to represent text is the Bag of Words model:
 
-- Count the frequency of each word in a document
-- Ignore grammar and word order
-- Create a vocabulary of all unique words in the corpus
-- Represent each document as a vector of word counts
+- Each document is represented as a vector of word counts
+- The position and order of words are ignored
+- Each dimension in the vector corresponds to a word in the vocabulary
 
-### TF-IDF (Term Frequency-Inverse Document Frequency)
+**Advantages:**
+- Simple to understand and implement
+- Works well for basic text classification
 
-TF-IDF improves on BoW by weighting terms:
+**Disadvantages:**
+- Ignores word order and context
+- Results in sparse, high-dimensional vectors
+- Doesn't capture semantic meaning
+
+### 2. TF-IDF (Term Frequency-Inverse Document Frequency)
+
+TF-IDF improves on BoW by weighting terms based on their importance:
 
 - Term Frequency (TF): How often a word appears in a document
-- Inverse Document Frequency (IDF): How unique or rare a word is across all documents
+- Inverse Document Frequency (IDF): How rare a word is across all documents
 - TF-IDF = TF × IDF
 
-This helps reduce the importance of common words like "the" or "and" that appear in many documents.
+**Advantages:**
+- Reduces the impact of common words
+- Gives more weight to distinctive terms
+- Better performance than simple BoW
 
-## Implementing Basic Text Representation
+**Disadvantages:**
+- Still uses sparse vectors
+- Doesn't capture semantic relationships between words
+- No understanding of word context
 
-We'll use scikit-learn to implement these techniques:
+### 3. Word Embeddings
 
-```python
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+Word embeddings represent words as dense vectors in a continuous vector space:
 
-# Sample documents
-documents = [
-    "I love machine learning and AI",
-    "Recommendation systems are powerful",
-    "AI and machine learning are transforming industries"
-]
+- Words with similar meanings are positioned close to each other
+- Vectors capture semantic relationships
+- Pre-trained models like Word2Vec, GloVe, or BERT can be used
 
-# Bag of Words
-bow_vectorizer = CountVectorizer()
-bow_matrix = bow_vectorizer.fit_transform(documents)
-print("BoW vocabulary:", bow_vectorizer.get_feature_names_out())
-print("BoW matrix shape:", bow_matrix.shape)
-print("BoW representation:\n", bow_matrix.toarray())
+**Advantages:**
+- Captures semantic meaning
+- Lower-dimensional representation
+- Can represent relationships between words (e.g., king - man + woman ≈ queen)
 
-# TF-IDF
-tfidf_vectorizer = TfidfVectorizer()
-tfidf_matrix = tfidf_vectorizer.fit_transform(documents)
-print("\nTF-IDF vocabulary:", tfidf_vectorizer.get_feature_names_out())
-print("TF-IDF matrix shape:", tfidf_matrix.shape)
-print("TF-IDF representation:\n", tfidf_matrix.toarray())
-```
+**Disadvantages:**
+- More complex to implement
+- Requires more computational resources
+- May need large amounts of training data
 
-## Word Embeddings
+## Document Similarity
 
-Word embeddings are more advanced representations that capture semantic meaning:
+Once we have vector representations of documents, we can calculate similarity between them:
 
-- Words are represented as dense vectors in a continuous vector space
-- Similar words are positioned close to each other
-- Relationships between words can be captured mathematically
+### Cosine Similarity
 
-### Word2Vec
+The most common similarity measure for text data:
 
-Word2Vec learns word associations from a large corpus of text:
+- Measures the cosine of the angle between two vectors
+- Ranges from -1 (completely opposite) to 1 (exactly the same)
+- Formula: cos(θ) = (A·B) / (||A|| × ||B||)
 
-- Continuous Bag of Words (CBOW): Predicts a word given its context
-- Skip-gram: Predicts context words given a target word
+### Euclidean Distance
 
-### GloVe (Global Vectors for Word Representation)
+The straight-line distance between two points:
 
-GloVe combines global matrix factorization and local context window methods.
+- Smaller values indicate more similar documents
+- Formula: d(A, B) = √(Σ(Ai - Bi)²)
 
-### Sentence Transformers
+## Building a Simple Recommendation System
 
-For our recommendation system, we'll use Sentence Transformers to get embeddings for entire documents:
+Using these representation techniques, we can build a simple recommendation system:
 
-```python
-from sentence_transformers import SentenceTransformer
+1. Represent all documents as vectors
+2. For a given query or document, find the most similar documents
+3. Recommend the top N most similar documents
 
-# Load pre-trained model
-model = SentenceTransformer('all-MiniLM-L6-v2')
+## Practical Implementation
 
-# Generate embeddings
-embeddings = model.encode(documents)
+In the accompanying notebook, we'll implement:
 
-print("Embedding shape:", embeddings.shape)
-print("First document embedding:", embeddings[0][:10])  # Show first 10 dimensions
-```
-
-## Comparing Documents Using Embeddings
-
-Once we have embeddings, we can compare documents using similarity measures:
-
-```python
-from sklearn.metrics.pairwise import cosine_similarity
-
-# Calculate cosine similarity between all document pairs
-similarity_matrix = cosine_similarity(embeddings)
-
-print("Similarity matrix:")
-print(similarity_matrix)
-
-# Find most similar document to the first document
-doc_index = 0
-similarities = similarity_matrix[doc_index]
-most_similar_index = similarities.argsort()[-2]  # Second highest (highest is itself)
-print(f"Most similar to '{documents[doc_index]}' is: '{documents[most_similar_index]}'")
-```
+1. BoW and TF-IDF representations using scikit-learn
+2. Word embeddings using Sentence Transformers
+3. Document similarity calculations
+4. A simple recommendation function
 
 ## Exercise
 
-1. Create embeddings for a set of articles or blog posts
-2. Calculate similarity between articles
-3. Build a simple function that returns the top 3 most similar articles to a given article
+Before moving on to the next lesson:
 
-## Next Steps
-
-In the next lesson, we'll build a basic recommendation system using the embedding techniques we've learned.
+1. Experiment with different preprocessing options in the TextProcessor class
+2. Try different similarity measures
+3. Test the recommendation system with your own queries
+4. Compare the results from different representation methods
 
 ## Resources
 
-- [Scikit-learn Documentation: Text Feature Extraction](https://scikit-learn.org/stable/modules/feature_extraction.html#text-feature-extraction)
+- [scikit-learn: Working with Text Data](https://scikit-learn.org/stable/tutorial/text_analytics/working_with_text_data.html)
 - [Sentence Transformers Documentation](https://www.sbert.net/)
-- [Word2Vec Explained](https://towardsdatascience.com/word2vec-explained-49c52b4ccb71)
+- [Understanding TF-IDF](https://monkeylearn.com/blog/what-is-tf-idf/)
+- [Word Embeddings Guide](https://jalammar.github.io/illustrated-word2vec/)

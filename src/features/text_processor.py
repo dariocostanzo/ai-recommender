@@ -1,39 +1,56 @@
-"""
-Text processing utilities for the recommendation system.
-"""
-
 import re
 import nltk
+import numpy as np
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer, WordNetLemmatizer
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
-
-# Download necessary NLTK data
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt')
-
-try:
-    nltk.data.find('corpora/stopwords')
-except LookupError:
-    nltk.download('stopwords')
-
-try:
-    nltk.data.find('corpora/wordnet')
-except LookupError:
-    nltk.download('wordnet')
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 class TextProcessor:
     """
-    Class for processing text data for the recommendation system.
+    A class for processing text data for recommendation systems.
+    
+    This class implements various text processing techniques discussed in Lesson 2:
+    - Text preprocessing (lowercase, punctuation removal, stopword removal, stemming, lemmatization)
+    - Text representation methods (Bag of Words, TF-IDF)
+    - Document similarity calculation
+    - Keyword extraction
+    
+    The TextProcessor can be used in Jupyter notebooks to:
+    1. Preprocess text data
+    2. Convert text into numerical representations (vectors)
+    3. Calculate similarity between documents
+    4. Extract important keywords from documents
+    
+    Example usage:
+    ```python
+    # Create a TextProcessor instance
+    processor = TextProcessor(
+        lowercase=True,
+        remove_punctuation=True,
+        remove_stopwords=True,
+        stemming=False,
+        lemmatization=True
+    )
+    
+    # Preprocess documents
+    preprocessed_docs = processor.preprocess_documents(documents)
+    
+    # Create TF-IDF vectors
+    tfidf_matrix, feature_names = processor.create_tfidf_vectors(documents)
+    
+    # Calculate similarity between two documents
+    similarity = processor.compute_document_similarity(doc1, doc2, method='tfidf')
+    
+    # Extract keywords from a document
+    keywords = processor.extract_keywords(document, top_n=3)
+    ```
     """
     
-    def __init__(self, lowercase=True, remove_punctuation=True, 
-                 remove_stopwords=True, stemming=False, lemmatization=True):
+    def __init__(self, lowercase=True, remove_punctuation=True, remove_stopwords=True, 
+                 stemming=False, lemmatization=False):
         """
-        Initialize the text processor.
+        Initialize the TextProcessor with preprocessing options.
         
         Parameters:
         -----------
@@ -45,7 +62,7 @@ class TextProcessor:
             Whether to remove stopwords
         stemming : bool, default=False
             Whether to apply stemming
-        lemmatization : bool, default=True
+        lemmatization : bool, default=False
             Whether to apply lemmatization
         """
         self.lowercase = lowercase
@@ -54,9 +71,29 @@ class TextProcessor:
         self.stemming = stemming
         self.lemmatization = lemmatization
         
-        self.stop_words = set(stopwords.words('english'))
-        self.stemmer = PorterStemmer()
-        self.lemmatizer = WordNetLemmatizer()
+        # Initialize tools
+        if self.remove_stopwords:
+            # Download NLTK resources if needed
+            try:
+                nltk.data.find('corpora/stopwords')
+            except LookupError:
+                nltk.download('stopwords')
+            self.stop_words = set(stopwords.words('english'))
+            
+        if self.stemming:
+            self.stemmer = PorterStemmer()
+            
+        if self.lemmatization:
+            # Download NLTK resources if needed
+            try:
+                nltk.data.find('corpora/wordnet')
+            except LookupError:
+                nltk.download('wordnet')
+            self.lemmatizer = WordNetLemmatizer()
+            
+        # Initialize vectorizers
+        self.bow_vectorizer = None
+        self.tfidf_vectorizer = None
     
     def preprocess_text(self, text):
         """
@@ -72,29 +109,39 @@ class TextProcessor:
         str
             The preprocessed text
         """
+        # Convert to lowercase
         if self.lowercase:
             text = text.lower()
         
+        # Remove punctuation
         if self.remove_punctuation:
             text = re.sub(r'[^\w\s]', '', text)
         
         # Tokenize
-        tokens = word_tokenize(text)
+        try:
+            nltk.data.find('tokenizers/punkt')
+        except LookupError:
+            nltk.download('punkt')
+        tokens = nltk.word_tokenize(text)
         
+        # Remove stopwords
         if self.remove_stopwords:
             tokens = [token for token in tokens if token not in self.stop_words]
         
+        # Apply stemming
         if self.stemming:
             tokens = [self.stemmer.stem(token) for token in tokens]
         
+        # Apply lemmatization
         if self.lemmatization:
             tokens = [self.lemmatizer.lemmatize(token) for token in tokens]
         
+        # Join tokens back into a string
         return ' '.join(tokens)
     
     def preprocess_documents(self, documents):
         """
-        Preprocess a list of text documents.
+        Preprocess a collection of documents.
         
         Parameters:
         -----------
@@ -108,93 +155,59 @@ class TextProcessor:
         """
         return [self.preprocess_text(doc) for doc in documents]
     
-    def create_tfidf_vectors(self, documents, max_features=None):
+    def create_bow_vectors(self, documents, min_df=1, max_df=1.0):
         """
-        Create TF-IDF vectors from documents.
+        Create Bag of Words vectors for a collection of documents.
         
         Parameters:
         -----------
         documents : list of str
-            The documents to preprocess and vectorize
-        max_features : int, default=None
-            Maximum number of features (words) to extract
+            The documents to vectorize
+        min_df : int or float, default=1
+            Minimum document frequency for a term to be included
+        max_df : float or int, default=1.0
+            Maximum document frequency for a term to be included
             
         Returns:
         --------
-        scipy.sparse.csr_matrix
-            TF-IDF vectors for the documents
-        list of str
-            Feature names (words)
+        scipy.sparse.csr_matrix, list
+            The BoW matrix and the list of feature names
         """
         # Preprocess documents
         preprocessed_docs = self.preprocess_documents(documents)
         
-        # Create TF-IDF vectorizer
-        vectorizer = TfidfVectorizer(max_features=max_features)
+        # Create and fit the vectorizer
+        self.bow_vectorizer = CountVectorizer(min_df=min_df, max_df=max_df)
+        bow_matrix = self.bow_vectorizer.fit_transform(preprocessed_docs)
         
-        # Fit and transform documents
-        tfidf_matrix = vectorizer.fit_transform(preprocessed_docs)
-        
-        return tfidf_matrix, vectorizer.get_feature_names_out()
+        return bow_matrix, self.bow_vectorizer.get_feature_names_out()
     
-    def create_bow_vectors(self, documents, max_features=None):
+    def create_tfidf_vectors(self, documents, min_df=1, max_df=1.0):
         """
-        Create Bag-of-Words vectors from documents.
+        Create TF-IDF vectors for a collection of documents.
         
         Parameters:
         -----------
         documents : list of str
-            The documents to preprocess and vectorize
-        max_features : int, default=None
-            Maximum number of features (words) to extract
+            The documents to vectorize
+        min_df : int or float, default=1
+            Minimum document frequency for a term to be included
+        max_df : float or int, default=1.0
+            Maximum document frequency for a term to be included
             
         Returns:
         --------
-        scipy.sparse.csr_matrix
-            BoW vectors for the documents
-        list of str
-            Feature names (words)
+        scipy.sparse.csr_matrix, list
+            The TF-IDF matrix and the list of feature names
         """
         # Preprocess documents
         preprocessed_docs = self.preprocess_documents(documents)
         
-        # Create Count vectorizer
-        vectorizer = CountVectorizer(max_features=max_features)
+        # Create and fit the vectorizer
+        self.tfidf_vectorizer = TfidfVectorizer(min_df=min_df, max_df=max_df)
+        tfidf_matrix = self.tfidf_vectorizer.fit_transform(preprocessed_docs)
         
-        # Fit and transform documents
-        bow_matrix = vectorizer.fit_transform(preprocessed_docs)
-        
-        return bow_matrix, vectorizer.get_feature_names_out()
-    
-    def extract_keywords(self, document, top_n=5):
-        """
-        Extract the most important keywords from a document using TF-IDF.
-        
-        Parameters:
-        -----------
-        document : str
-            The document to extract keywords from
-        top_n : int, default=5
-            Number of top keywords to extract
-            
-        Returns:
-        --------
-        list of tuple
-            List of (keyword, score) tuples
-        """
-        # Create a single-document corpus
-        corpus = [document]
-        
-        # Create TF-IDF vectors
-        tfidf_matrix, feature_names = self.create_tfidf_vectors(corpus)
-        
-        # Get scores for the first (and only) document
-        scores = zip(feature_names, tfidf_matrix.toarray()[0])
-        
-        # Sort by score and take top_n
-        sorted_scores = sorted(scores, key=lambda x: x[1], reverse=True)
-        
-        return sorted_scores[:top_n]
+        return tfidf_matrix, self.tfidf_vectorizer.get_feature_names_out()
     
     def compute_document_similarity(self, doc1, doc2, method='tfidf'):
         """
@@ -207,27 +220,70 @@ class TextProcessor:
         doc2 : str
             Second document
         method : str, default='tfidf'
-            Method to use for vectorization ('tfidf' or 'bow')
+            Method to use ('tfidf' or 'bow')
             
         Returns:
         --------
         float
-            Cosine similarity between the documents (0-1)
+            Similarity score between 0 and 1
         """
-        from sklearn.metrics.pairwise import cosine_similarity
+        # Preprocess documents
+        preprocessed_doc1 = self.preprocess_text(doc1)
+        preprocessed_doc2 = self.preprocess_text(doc2)
         
-        # Create a corpus with both documents
-        corpus = [doc1, doc2]
-        
-        # Vectorize based on method
-        if method.lower() == 'tfidf':
-            matrix, _ = self.create_tfidf_vectors(corpus)
-        elif method.lower() == 'bow':
-            matrix, _ = self.create_bow_vectors(corpus)
-        else:
-            raise ValueError(f"Unsupported method: {method}. Use 'tfidf' or 'bow'.")
+        if method == 'tfidf':
+            # Create TF-IDF vectors if not already created
+            if self.tfidf_vectorizer is None:
+                self.tfidf_vectorizer = TfidfVectorizer()
+                self.tfidf_vectorizer.fit([preprocessed_doc1, preprocessed_doc2])
+            
+            # Transform documents to TF-IDF vectors
+            vec1 = self.tfidf_vectorizer.transform([preprocessed_doc1])
+            vec2 = self.tfidf_vectorizer.transform([preprocessed_doc2])
+        else:  # method == 'bow'
+            # Create BoW vectors if not already created
+            if self.bow_vectorizer is None:
+                self.bow_vectorizer = CountVectorizer()
+                self.bow_vectorizer.fit([preprocessed_doc1, preprocessed_doc2])
+            
+            # Transform documents to BoW vectors
+            vec1 = self.bow_vectorizer.transform([preprocessed_doc1])
+            vec2 = self.bow_vectorizer.transform([preprocessed_doc2])
         
         # Compute cosine similarity
-        similarity = cosine_similarity(matrix[0:1], matrix[1:2])[0][0]
+        return cosine_similarity(vec1, vec2)[0, 0]
+    
+    def extract_keywords(self, document, top_n=5):
+        """
+        Extract the most important keywords from a document.
         
-        return similarity
+        Parameters:
+        -----------
+        document : str
+            The document to extract keywords from
+        top_n : int, default=5
+            Number of keywords to extract
+            
+        Returns:
+        --------
+        list of tuple
+            List of (keyword, score) tuples
+        """
+        # Preprocess document
+        preprocessed_doc = self.preprocess_text(document)
+        
+        # Create TF-IDF vector
+        vectorizer = TfidfVectorizer()
+        tfidf_matrix = vectorizer.fit_transform([preprocessed_doc])
+        
+        # Get feature names and scores
+        feature_names = vectorizer.get_feature_names_out()
+        scores = tfidf_matrix.toarray()[0]
+        
+        # Create a list of (keyword, score) tuples
+        keyword_scores = [(feature_names[i], scores[i]) for i in range(len(feature_names))]
+        
+        # Sort by score (descending) and return top_n
+        keyword_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        return keyword_scores[:top_n]

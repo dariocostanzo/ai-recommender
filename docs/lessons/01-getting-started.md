@@ -112,7 +112,3 @@ If everything is set up correctly, you should see the library versions and a sam
 - [Python for Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/)
 - [Scikit-learn Documentation](https://scikit-learn.org/stable/documentation.html)
 - [Introduction to Machine Learning with Python](https://www.oreilly.com/library/view/introduction-to-machine/9781449369880/)
-
-```
-
-```
