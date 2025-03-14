@@ -15,10 +15,12 @@ The simplest way to represent text is the Bag of Words model:
 - Each dimension in the vector corresponds to a word in the vocabulary
 
 **Advantages:**
+
 - Simple to understand and implement
 - Works well for basic text classification
 
 **Disadvantages:**
+
 - Ignores word order and context
 - Results in sparse, high-dimensional vectors
 - Doesn't capture semantic meaning
@@ -32,11 +34,13 @@ TF-IDF improves on BoW by weighting terms based on their importance:
 - TF-IDF = TF × IDF
 
 **Advantages:**
+
 - Reduces the impact of common words
 - Gives more weight to distinctive terms
 - Better performance than simple BoW
 
 **Disadvantages:**
+
 - Still uses sparse vectors
 - Doesn't capture semantic relationships between words
 - No understanding of word context
@@ -50,11 +54,13 @@ Word embeddings represent words as dense vectors in a continuous vector space:
 - Pre-trained models like Word2Vec, GloVe, or BERT can be used
 
 **Advantages:**
+
 - Captures semantic meaning
 - Lower-dimensional representation
 - Can represent relationships between words (e.g., king - man + woman ≈ queen)
 
 **Disadvantages:**
+
 - More complex to implement
 - Requires more computational resources
 - May need large amounts of training data
